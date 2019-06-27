@@ -44,9 +44,10 @@ module Fedex
           add_shipper(xml)
           add_recipient(xml)
           add_shipping_charges_payment(xml)
-          add_special_services(xml) if @shipping_options[:return_reason]
+          add_special_services(xml) if @shipping_options[:return_reason] || @shipping_options[:electronic_trade_documents]
           add_customs_clearance(xml) if @customs_clearance
           add_custom_components(xml)
+          add_commercial_invoice_specification(xml) if @shipping_options[:electronic_trade_documents]
           xml.RateRequestTypes "ACCOUNT"
           add_packages(xml)
         }
@@ -66,15 +67,33 @@ module Fedex
         }
       end
 
-      def add_special_services(xml)
-        xml.SpecialServicesRequested {
-          xml.SpecialServiceTypes "RETURN_SHIPMENT"
-          xml.ReturnShipmentDetail {
-            xml.ReturnType "PRINT_RETURN_LABEL"
-            xml.Rma {
-              xml.Reason "#{@shipping_options[:return_reason]}"
+      def add_commercial_invoice_specification(xml)
+        xml.ShippingDocumentSpecification {
+          xml.ShippingDocumentTypes 'COMMERCIAL_INVOICE'
+          xml.CommercialInvoiceDetail {
+            xml.Format {
+              xml.ImageType 'PDF'
+              xml.StockType 'PAPER_LETTER'
+              xml.ProvideInstructions '1'
             }
           }
+        }
+      end
+
+      def add_special_services(xml)
+        xml.SpecialServicesRequested {
+          if @shipping_options[:return_reason]
+            xml.SpecialServiceTypes "RETURN_SHIPMENT"
+            xml.ReturnShipmentDetail {
+              xml.ReturnType "PRINT_RETURN_LABEL"
+              xml.Rma {
+                xml.Reason "#{@shipping_options[:return_reason]}"
+              }
+            }
+          end
+          if @shipping_options[:electronic_trade_documents]
+            xml.SpecialServiceTypes 'ELECTRONIC_TRADE_DOCUMENTS'
+          end
         }
       end
 
